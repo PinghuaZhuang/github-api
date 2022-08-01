@@ -1,12 +1,10 @@
 {
   "name": "@zstark/github-api",
   "version": "0.1.0",
-  "publishConfig": {
-    "access": "public"
-  },
+  "description": "利用 github-api 模拟CRUD接口.",
   "scripts": {
-    "sort": "sort-package-json package.json",
-    "lint": "lint-staged"
+    "lint": "lint-staged",
+    "sort": "sort-package-json package.json"
   },
   "lint-staged": {
     "*.{js,jsx,less,md,json}": [
@@ -17,11 +15,15 @@
     ]
   },
   "dependencies": {
+    "flyio": "^0.6.14",
     "react": "^18.0.0"
   },
   "devDependencies": {
     "husky": "^7.0.4",
     "lint-staged": "^10.0.7",
     "sort-package-json": "^1.55.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
