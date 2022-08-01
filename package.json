@@ -2,8 +2,12 @@
   "name": "@zstark/github-api",
   "version": "0.1.0",
   "description": "利用 github-api 模拟CRUD接口.",
+  "main": "lib/request.umd",
+  "module": "src",
+  "browser": "lib/request.umd.cjs",
   "scripts": {
-    "build": "tsc src/index.ts -p ./tsconfig.json",
+    "build": "vite build",
+    "build:node": "vite build --mode node",
     "lint": "lint-staged",
     "sort": "sort-package-json package.json"
   },
@@ -23,7 +27,8 @@
     "@types/node": "^18.6.3",
     "husky": "^7.0.4",
     "lint-staged": "^10.0.7",
-    "sort-package-json": "^1.55.0"
+    "sort-package-json": "^1.55.0",
+    "vite": "^3.0.4"
   },
   "publishConfig": {
     "access": "public"
