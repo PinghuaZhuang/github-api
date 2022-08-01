@@ -13,7 +13,9 @@
   <script>
     console.log('request', window.request);
 
-    request.read('read.json').then(data => console.log('data', data));
+      request.read('read.json').then(data => console.log('read data', data));
+
+      request.delete('read').then(data => console.log('delete data', data));
   </script>
 </body>
 
