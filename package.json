@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "利用 github-api 模拟CRUD接口.",
   "scripts": {
+    "build": "tsc src/index.ts -p ./tsconfig.json",
     "lint": "lint-staged",
     "sort": "sort-package-json package.json"
   },
@@ -19,6 +20,7 @@
     "react": "^18.0.0"
   },
   "devDependencies": {
+    "@types/node": "^18.6.3",
     "husky": "^7.0.4",
     "lint-staged": "^10.0.7",
     "sort-package-json": "^1.55.0"

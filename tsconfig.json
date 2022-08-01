@@ -1,16 +1,32 @@
 {
   "compilerOptions": {
     "target": "esnext",
+    "outDir": "lib",
     "module": "esnext",
     "moduleResolution": "node",
-    "jsx": "react",
+    "resolveJsonModule": true,
+    "importHelpers": true,
+    "jsx": "react-jsx",
     "esModuleInterop": true,
-    "types": ["jest"],
+    "sourceMap": true,
+    "baseUrl": "./",
+    "types": ["node"],
     "strict": true,
-    "skipLibCheck": true,
     "declaration": true,
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "allowSyntheticDefaultImports": true
   },
-  "exclude": ["/*.js", "*.json"]
+  "include": [
+    "src/**/*",
+    "typings.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "lib",
+    "es",
+    "dist",
+    "test",
+    "docs"
+  ]
 }
