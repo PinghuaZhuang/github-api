@@ -1,5 +1,6 @@
-import axios, { AxiosRequestConfig, AxiosInstance, AxiosResponse } from 'axios'
+import axios, { AxiosRequestConfig, AxiosInstance, AxiosResponse } from 'axios';
 import merge from 'lodash/merge';
+import globalConfig from './config';
 import { encode } from 'js-base64';
 import stringify from 'json-stringify-safe';
 import { READE_FILEORDIR, DELETE_FILE, CREATE_OR_UPDATE_FILE } from './api';
@@ -8,7 +9,7 @@ export function create(config?: AxiosRequestConfig, token?: string) {
   const instance = axios.create(merge({
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `token ${token ?? GITHUB_TOKEN}`,
+      Authorization: `token ${token ?? globalConfig.token}`,
       Accept: 'application/vnd.github+json',
     },
     timeout: 5 * 1_000,
@@ -18,7 +19,7 @@ export function create(config?: AxiosRequestConfig, token?: string) {
   return instance;
 };
 
-interface Config {
+export interface Config {
   token?: string;
   axios?: AxiosInstance;
   engine?: any;
@@ -26,7 +27,7 @@ interface Config {
   repo?: string;
 }
 
-interface Message {
+export interface Message {
   message: string;
   sha: string;
   branch: string;
@@ -40,7 +41,24 @@ interface Message {
   };
 }
 
-type Options = AxiosRequestConfig & Config;
+export interface Content {
+  name: string;
+  path: string;
+  sha: string;
+  size: number;
+  type: 'file' | 'dir';
+  download_url: string;
+  git_url: string;
+  html_url: string;
+  url: string;
+  _links: {
+    git: string;
+    self: string;
+    html: string;
+  };
+}
+
+export type Options = AxiosRequestConfig & Config;
 
 function parseUrl(url: string, requset: Request, suffixPath?: string) {
   return url
@@ -75,10 +93,10 @@ class Request {
   config(options?: Options) {
     if (options?.token) {
       this.token = options.token;
-      this.axios = options?.axios ?? create(undefined, this.token);
     }
-    this.owner = options?.owner ?? (GITHUB_OWNER as string);
-    this.repo = options?.repo ?? (GITHUB_REPO as string);
+    this.owner = options?.owner ?? globalConfig.owner;
+    this.repo = options?.repo ?? globalConfig.repo;
+    this.axios = options?.axios ?? create(undefined, this.token);
   }
 
   readDir(path: string) {
@@ -89,7 +107,7 @@ class Request {
         path,
       ),
       getDefaultParams(this),
-    ).then((response) => {
+    ).then((response: AxiosResponse<Content | Content[]>) => {
       const { data } = response;
       if (Array.isArray(data)) {
         return data;
@@ -129,9 +147,7 @@ class Request {
         ),
         getDefaultParams(this),
       )
-      .then((response: AxiosResponse<{
-        sha: string;
-      }>) => {
+      .then((response: AxiosResponse<Content>) => {
         return this.axios.delete(parseUrl(
           DELETE_FILE,
           this,
@@ -167,9 +183,7 @@ class Request {
         return Promise.resolve(e);
       }
       return Promise.reject(e);
-    }).then((response: AxiosResponse<{
-      sha: string;
-    }>) => {
+    }).then((response: AxiosResponse<Content>) => {
       return this.axios.put(
         parseUrl(
           CREATE_OR_UPDATE_FILE,

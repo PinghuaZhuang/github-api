@@ -7,6 +7,7 @@
   "browser": "lib/request.umd.cjs",
   "scripts": {
     "build": "vite build",
+    "preinstall": "node ./bin/initialize",
     "lint": "lint-staged",
     "sort": "sort-package-json package.json"
   },
