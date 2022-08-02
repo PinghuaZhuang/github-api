@@ -1,3 +1,3 @@
-import Request from './request';
+import Request from './Request';
 
 export default new Request();

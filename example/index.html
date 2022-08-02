@@ -11,14 +11,18 @@
 
 <body>
   <script>
-    console.log('request', window.request);
+    request.config({
+      token: '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',
+    });
+    console.log('request', request);
 
-    request.read('read.json').then(data => console.log('read data', data));
+    request.read('read').then(data => console.log('read data', data));
+    request.readDir('read.json').then(data => console.log('readDir data', data));
 
     // request.delete('read').then(data => console.log('delete data', data));
 
     // request.update('read', {
-    //   content: '测试内容'
+    //   content: '测试内容1'
     // }).then(data => console.log('update data', data));
   </script>
 </body>

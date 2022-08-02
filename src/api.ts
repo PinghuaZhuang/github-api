@@ -12,7 +12,7 @@ export const ALL_BRANCHES = `/repos/{owner}/{repo}/branches`
  */
 /* ================================================= */
 // 读取文件
-export const READE_FILE = `/repos/{owner}/{repo}/contents/{path}`;
+export const READE_FILEORDIR = `/repos/{owner}/{repo}/contents/{path}`;
 
 // 创建 or 更新文件
 export const CREATE_OR_UPDATE_FILE = `/repos/{owner}/{repo}/contents/{path}`;
