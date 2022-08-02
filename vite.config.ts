@@ -1,14 +1,11 @@
-import { defineConfig, UserConfig, UserConfigFn } from 'vite';
+import { defineConfig } from 'vite';
 import path from 'path';
 
 function resolve(url: string) {
   return path.resolve(__dirname, url);
 }
 
-// https://vitejs.dev/config/
-export default defineConfig(({ command, mode }) => {
-  const isNodeEnv = mode === 'node';
-
+export default defineConfig((/* { command, mode } */) => {
   return {
     base: './',
     envPrefix: 'APP_',
@@ -16,11 +13,11 @@ export default defineConfig(({ command, mode }) => {
       host: '0.0.0.0',
     },
     build: {
-      outDir: isNodeEnv ? 'lib/node' : 'lib',
+      outDir: 'lib',
       lib: {
-        entry: isNodeEnv ? resolve('./src/index.node.ts') : resolve('./src/index.ts'),
+        entry: resolve('./src/index.ts'),
         name: 'request',
-        fileName: isNodeEnv ? 'request.node' : 'request',
+        fileName: 'request',
         formats: ['es', 'cjs', 'umd'],
       },
       // rollupOptions: {

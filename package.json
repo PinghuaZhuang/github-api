@@ -7,7 +7,6 @@
   "browser": "lib/request.umd.cjs",
   "scripts": {
     "build": "vite build",
-    "build:node": "vite build --mode node",
     "lint": "lint-staged",
     "sort": "sort-package-json package.json"
   },
@@ -21,6 +20,8 @@
   },
   "dependencies": {
     "axios": "^0.27.2",
+    "js-base64": "^3.7.2",
+    "json-stringify-safe": "^5.0.1",
     "lodash": "^4.17.21",
     "react": "^18.0.0"
   },

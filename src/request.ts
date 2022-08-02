@@ -1,6 +1,8 @@
 import axios, { AxiosRequestConfig, AxiosInstance, AxiosResponse } from 'axios'
 import merge from 'lodash/merge';
-import { READE_FILE, DELETE_FILE } from './api';
+import { encode } from 'js-base64';
+import stringify from 'json-stringify-safe';
+import { READE_FILE, DELETE_FILE, CREATE_OR_UPDATE_FILE } from './api';
 
 export function create(config?: AxiosRequestConfig) {
   return axios.create(merge({
@@ -29,14 +31,23 @@ interface Message {
   committer?: {
     name: string,
     email: string,
-  }
+  };
+  author?: {
+    name: string,
+    email: string,
+  };
 }
 
 type Options = AxiosRequestConfig & Config;
 
-function parseUrl(url: string, requset: Request) {
+function parseUrl(url: string, requset: Request, suffixPath: string) {
   return url.replace(/{owner}/g, requset.owner)
     .replace(/{repo}/g, requset.repo)
+    .replace(/{path}/g, suffixPath)
+}
+
+function parsePath(path: string) {
+  return path.replace(/(.*?)(\.json)?$/, '$1.json');
 }
 
 class Request {
@@ -60,11 +71,13 @@ class Request {
   }
 
   read(path: string, params?: object, config?: Options) {
+    const suffixPath = parsePath(path);
     return axios.get(
       parseUrl(
-        `{owner}/{repo}/api/${path.replace(/(.*?)(\.json)?$/, '$1.json')}`,
-        this
-      ).replace(/{path}/g, path),
+        `{owner}/{repo}/api/${suffixPath}`,
+        this,
+        suffixPath,
+      ),
       merge({
         params: merge({
           ref: this.ref,
@@ -78,15 +91,16 @@ class Request {
   }
 
   delete(path: string, message?: Message, params?: object) {
-    const suffixPath = path.replace(/(.*?)(\.json)?$/, '$1.json');
+    const suffixPath = parsePath(path);
     const mergeParams = merge({
       ref: this.ref,
     }, params);
     return this.axios.get(
       parseUrl(
         READE_FILE,
-        this
-      ).replace(/{path}/g, suffixPath),
+        this,
+        suffixPath,
+      ),
       {
         params: mergeParams,
       },
@@ -95,15 +109,70 @@ class Request {
     }>) => {
       return this.axios.delete(parseUrl(
         DELETE_FILE,
-        this
-      ).replace(/{path}/g, suffixPath), {
+        this,
+        suffixPath
+      ), {
         data: merge({
-          message: `delete(GIT-API): ${suffixPath}`,
+          message: `delete(API): ${suffixPath}`,
           branch: this.ref,
           sha: response.data.sha,
-          committer: { name: "GITHUB-API" },
         }, message),
       });
+    })
+  }
+
+  // 创建或者更新
+  update(path: string, params: Message & {
+    content: string;
+  }) {
+    let is404 = false;
+    const suffixPath = parsePath(path);
+    const mergeParams = merge({
+      ref: this.ref,
+    }, params);
+    return this.axios.get(
+      parseUrl(
+        READE_FILE,
+        this,
+        suffixPath
+      ),
+      {
+        params: mergeParams,
+      },
+    ).catch(e => {
+      const { response: { status } } = e;
+      if (status === 404) {
+        is404 = true;
+        return Promise.resolve(e);
+      }
+      return Promise.reject(e);
+    }).then((response: AxiosResponse<{
+      sha: string;
+    }>) => {
+      return this.axios.put(
+        parseUrl(
+          CREATE_OR_UPDATE_FILE,
+          this,
+          suffixPath,
+        ),
+        merge(
+          {
+            message: is404
+              ? `create(API): ${suffixPath}`
+              : `update(API): ${suffixPath}`,
+            branch: this.ref,
+          },
+          params,
+          is404
+            ? {}
+            : {
+              sha: response.data.sha,
+            },
+          {
+            content: encode(stringify(params.content)),
+          },
+        ),
+      )
     })
   }
 }
