@@ -1,11 +1,12 @@
 import axios, { AxiosRequestConfig, AxiosInstance, AxiosResponse } from 'axios';
+import { Message, Content, Options } from './Request.type';
 import merge from 'lodash/merge';
 import globalConfig from './config';
 import { encode } from 'js-base64';
 import stringify from 'json-stringify-safe';
 import { READE_FILEORDIR, DELETE_FILE, CREATE_OR_UPDATE_FILE } from './api';
 
-export function create(config?: AxiosRequestConfig, token?: string) {
+function create(config?: AxiosRequestConfig, token?: string) {
   const instance = axios.create(merge({
     headers: {
       'Content-Type': 'application/json',
@@ -18,47 +19,6 @@ export function create(config?: AxiosRequestConfig, token?: string) {
 
   return instance;
 };
-
-export interface Config {
-  token?: string;
-  axios?: AxiosInstance;
-  engine?: any;
-  owner?: string;
-  repo?: string;
-}
-
-export interface Message {
-  message: string;
-  sha: string;
-  branch: string;
-  committer?: {
-    name: string,
-    email: string,
-  };
-  author?: {
-    name: string,
-    email: string,
-  };
-}
-
-export interface Content {
-  name: string;
-  path: string;
-  sha: string;
-  size: number;
-  type: 'file' | 'dir';
-  download_url: string;
-  git_url: string;
-  html_url: string;
-  url: string;
-  _links: {
-    git: string;
-    self: string;
-    html: string;
-  };
-}
-
-export type Options = AxiosRequestConfig & Config;
 
 function parseUrl(url: string, requset: Request, suffixPath?: string) {
   return url
@@ -99,6 +59,7 @@ class Request {
     this.axios = options?.axios ?? create(undefined, this.token);
   }
 
+  // 获取目录下的文件列表
   readDir(path: string) {
     return this.axios.get(
       parseUrl(
@@ -115,6 +76,9 @@ class Request {
       return Promise.resolve([data]);
     });
   }
+
+  // 获取目录下的文件列表名
+  readDirNames() { }
 
   read(path: string) {
     const suffixPath = replenishPath(path);
@@ -214,6 +178,9 @@ class Request {
       )
     })
   }
+
+  // 获取list => id为名创建
+  create() { }
 }
 
 export default Request;
