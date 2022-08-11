@@ -1,13 +1,19 @@
 import axios, { AxiosRequestConfig, AxiosInstance, AxiosResponse } from 'axios';
 import tv4 from 'tv4';
+import { nanoid } from 'nanoid'
 import merge from 'lodash/merge';
 import { encode } from 'js-base64';
 import stringify from 'json-stringify-safe';
 import globalConfig from './config';
-import { Message, Content, Options } from './Request.type';
+import { Message, Content, Options, Tv4Error } from './Request.type';
 import { READE_FILEORDIR, DELETE_FILE, CREATE_OR_UPDATE_FILE } from './api';
 
 const { isArray } = Array;
+const toString = [].toString;
+
+function isPlainOject(target: any) {
+  return toString.call(target).toLowerCase() === '[object object]';
+}
 
 function create(config?: AxiosRequestConfig, token?: string) {
   const instance = axios.create(merge({
@@ -24,21 +30,26 @@ function create(config?: AxiosRequestConfig, token?: string) {
 };
 
 function parseUrl(url: string, requset: Request, suffixPath?: string) {
-  return url
+  return cleanPath(url
+    .replace(/\/{2,}/g, '/')
     .replace(/{owner}/g, requset.owner)
     .replace(/{repo}/g, requset.repo)
-    .replace(/{path}/g, suffixPath ?? '')
+    .replace(/{path}/g, suffixPath ?? ''));
 }
 
 function replenishPath(path: string) {
-  return path.replace(/(.*?)(\.json)?$/, '$1.json');
+  return cleanPath(path.replace(/(.*?)(\.json)?$/, '$1.json'));
 }
 
-function getJsonSchemaPath(path: string) {
+function cleanPath(path: string) {
+  return path.replace(/\/{2,}/g, '/');
+}
+
+function getJsonSchemaDir(path: string) {
   if (/\.json$/.test(path)) {
-    return path.replace(/\/[^\/]*?$/, '');
+    return cleanPath(path.replace(/\/[^\/]*?$/, ''));
   }
-  return path;
+  return cleanPath(path);
 }
 
 function getDefaultParams(requset: Request) {
@@ -93,7 +104,7 @@ class Request {
 
   // 判断是否存在改文件
   exists(path: string): Promise<{ is404: boolean, data: Content }> {
-    return this.readFile(path).catch(e => {
+    return this.readFile(cleanPath(path)).catch(e => {
       const { response: { status } } = e;
       if (status === 404) {
         return Promise.resolve({
@@ -109,23 +120,28 @@ class Request {
       if (isArray(response)) {
         return Promise.reject(createError`not file. path: ${path}`);
       }
-      return { is404: false, data: response }
-    })
+      return { is404: false, data: response };
+    });
   }
 
-  // TODO:
-  validate(data: Content) {
-
+  // jsonSchema 校验
+  validate(data: any, jsonSchema: object): boolean | Tv4Error {
+    const tv4Instance = tv4.freshApi();
+    const result = tv4Instance.validate(data, jsonSchema);
+    if (result !== true) {
+      return tv4Instance.error;
+    }
+    return true;
   }
 
   // 读取文件, base64编码
   readFile(path: string) {
-    return this.path(path).then((response) => {
+    return this.path(cleanPath(path)).then((response) => {
       if (isArray(response)) {
         return Promise.reject(createError`not file. path: ${path}`);
       }
       return response;
-    })
+    });
   }
 
   // 更新或者创建文件
@@ -153,12 +169,12 @@ class Request {
           content: encode(stringify(message.content)),
         },
       ),
-    )
+    );
   }
 
   // 获取目录下的文件列表
   readDir(path: string) {
-    return this.path(path).then((response) => {
+    return this.path(cleanPath(path)).then((response) => {
       if (isArray(response)) {
         return response;
       }
@@ -172,17 +188,44 @@ class Request {
   }
 
   getJsonSchema(dir: string) {
-    return this.read(getJsonSchemaPath(dir)).then((jsonSchema) => {
+    const path = cleanPath(`${getJsonSchemaDir(dir)}/schema.json`);
+    return this.read(path).then((jsonSchema) => {
       if (typeof jsonSchema !== 'object') {
         return Promise.reject(createError`JSON Schema type error. path: ${dir}`);
       }
       return jsonSchema;
-    })
+    });
   }
 
-  // TODO:
-  addJsonSchema(dir: string, jsonSchema: object) {
-    return
+  addJsonSchema(dir: string, jsonSchema: object, message?: Omit<Message, 'content'>) {
+    const path = cleanPath(`${getJsonSchemaDir(dir)}/schema.json`);
+    return this.exists(path).then((response) => {
+      if (response.is404) {
+        return Promise.resolve(response.data)
+      }
+      return Promise.reject(createError`already have json-shcema. path: ${path}`)
+    }).then(() => {
+      return this.updateOrCreateFile(path, merge({
+        message: `create(API): add json-schema. ${replenishPath(path)}.`,
+        content: jsonSchema,
+      }, message));
+    });
+  }
+
+  updateJsonShcema(dir: string, jsonSchema: object, message?: Omit<Message, 'content'>) {
+    const path = cleanPath(`${getJsonSchemaDir(dir)}/schema.json`);
+    return this.exists(path).then((response) => {
+      if (response.is404) {
+        return Promise.reject(createError`don't have json-schema. path: ${path}`)
+      }
+      return Promise.resolve(response.data)
+    }).then((response) => {
+      return this.updateOrCreateFile(path, merge({
+        message: `update(API): update json-schema. ${path}.`,
+        content: jsonSchema,
+        sha: response.sha,
+      }, message));
+    });
   }
 
   read(path: string) {
@@ -220,82 +263,50 @@ class Request {
             sha: response.sha,
           }, message),
         });
-      })
+      });
   }
 
   // 创建或者更新
-  // TODO:
-  update(path: string, message: Message & {
-    content: string | object;
-  }) {
-    let is404 = false;
-    const suffixPath = replenishPath(path);
-
-    return this.path(path).catch(e => {
-      const { response: { status } } = e;
-      if (status === 404) {
-        is404 = true;
-        return Promise.resolve(e);
+  update(path: string, content: string | object, message?: Omit<Message, 'content'>) {
+    return this.exists(path).then((response) => {
+      if (response.is404) {
+        return Promise.reject(createError`don't have file. path: ${path}`)
       }
-      return Promise.reject(e);
-    }).then((response: Content | Content[]) => {
-      if (isArray(response)) {
-        return Promise.reject(createError`not file. path: ${path}`);
-      }
-      return this.axios.put(
-        parseUrl(
-          CREATE_OR_UPDATE_FILE,
-          this,
-          suffixPath,
-        ),
-        merge(
-          {
-            message: is404
-              ? `create(API): ${suffixPath}`
-              : `update(API): ${suffixPath}`,
-            branch: this.ref,
-            committer: {
-              name: 'robot',
-              email: 'robot@github.com'
-            },
-          },
-          message,
-          is404
-            ? {}
-            : {
-              sha: response.sha,
-            },
-          {
-            content: encode(stringify(message.content)),
-          },
-        ),
-      )
-    })
+      return Promise.resolve(response.data)
+    }).then((response) => {
+      return this.updateOrCreateFile(path, merge({
+        message: `update(API): ${replenishPath(path)}.`,
+        sha: response.sha,
+        content,
+      }, message));
+    });
   }
 
   // 获取list => id为名创建
-  create(dir: string, message: Message & {
-    content: string | object;
-  }) {
-    return this.exists(dir).then((response) => {
+  create(dir: string, content: string | object, message?: Omit<Message, 'content'>) {
+    const path = cleanPath(`${dir}/${nanoid()}.json`);
+    const msg = `create(API): ${replenishPath(path)}.`;
+    return this.exists(path).then((response) => {
       if (response.is404) {
         return Promise.resolve(response.data)
       }
-      return Promise.reject(createError`already have file. path: ${dir}`)
+      return Promise.reject(createError`already have file. path: ${path}`)
     }).then(() => {
       return this.getJsonSchema(dir).then((jsonSchema: object) => {
         // 校验数据
         // 暂不支持 $ref
-        const { content } = message;
-        const tv4Instance = tv4.freshApi();
-        const result = tv4Instance.validate(content, jsonSchema);
+        if (!isPlainOject(jsonSchema)) {
+          return Promise.reject(createError`json schema error. ${jsonSchema.toString()}. ${dir}`);
+        }
+        const result = this.validate(content, jsonSchema);
         if (result === true) {
           // 创建文件
-          return this.updateOrCreateFile(dir, merge({
-            message: `create(API): ${replenishPath(dir)}`,
+          return this.updateOrCreateFile(path, merge({
+            message: msg,
+            content,
           }, message));
         }
-        return Promise.reject(tv4Instance.error);
+        return Promise.reject(result);
       });
     });
   }

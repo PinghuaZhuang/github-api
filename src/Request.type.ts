@@ -10,8 +10,8 @@ export interface Config {
 
 export interface Message {
   message: string;
-  sha: string;
-  branch: string;
+  sha?: string;
+  branch?: string;
   committer?: {
     name: string,
     email: string,
@@ -40,3 +40,11 @@ export interface Content {
 }
 
 export type Options = AxiosRequestConfig & Config;
+
+export interface Tv4Error extends Error {
+  params: object;
+  subErrors: Tv4Error | null;
+  code: number;
+  dataPath: string;
+  schemaPath: string;
+}
