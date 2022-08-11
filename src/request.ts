@@ -118,7 +118,7 @@ class Request {
         return response;
       }
       if (isArray(response)) {
-        return Promise.reject(createError`not file. path: ${path}`);
+        return Promise.reject(createError`Not file. path: ${path}`);
       }
       return { is404: false, data: response };
     });
@@ -138,7 +138,7 @@ class Request {
   readFile(path: string) {
     return this.path(cleanPath(path)).then((response) => {
       if (isArray(response)) {
-        return Promise.reject(createError`not file. path: ${path}`);
+        return Promise.reject(createError`Not file. path: ${path}`);
       }
       return response;
     });
@@ -178,7 +178,7 @@ class Request {
       if (isArray(response)) {
         return response;
       }
-      return Promise.reject(createError`not dir. path: ${path}`);
+      return Promise.reject(createError`Not dir. path: ${path}`);
     });
   }
 
@@ -190,10 +190,16 @@ class Request {
   getJsonSchema(dir: string) {
     const path = cleanPath(`${getJsonSchemaDir(dir)}/schema.json`);
     return this.read(path).then((jsonSchema) => {
-      if (typeof jsonSchema !== 'object') {
-        return Promise.reject(createError`JSON Schema type error. path: ${dir}`);
+      if (!isPlainOject(jsonSchema)) {
+        return Promise.reject(createError`Json Schema type error. path: ${dir}`);
       }
       return jsonSchema;
+    }).catch(e => {
+      const { response: { status } } = e;
+      if (status === 404) {
+        return Promise.reject(createError`Don't have json-schema.`);
+      }
+      return Promise.reject(e);
     });
   }
 
@@ -203,7 +209,7 @@ class Request {
       if (response.is404) {
         return Promise.resolve(response.data)
       }
-      return Promise.reject(createError`already have json-shcema. path: ${path}`)
+      return Promise.reject(createError`Already have json-shcema. path: ${path}`)
     }).then(() => {
       return this.updateOrCreateFile(path, merge({
         message: `create(API): add json-schema. ${replenishPath(path)}.`,
@@ -213,10 +219,11 @@ class Request {
   }
 
   updateJsonShcema(dir: string, jsonSchema: object, message?: Omit<Message, 'content'>) {
+    console.warn(`Update the json-shcema ?`);
     const path = cleanPath(`${getJsonSchemaDir(dir)}/schema.json`);
     return this.exists(path).then((response) => {
       if (response.is404) {
-        return Promise.reject(createError`don't have json-schema. path: ${path}`)
+        return Promise.reject(createError`Don't have json-schema. path: ${path}`)
       }
       return Promise.resolve(response.data)
     }).then((response) => {
@@ -250,7 +257,7 @@ class Request {
 
   delete(path: string, message?: Message) {
     const suffixPath = replenishPath(path);
-    return this.readFile(path)
+    return this.readFile(suffixPath)
       .then((response) => {
         return this.axios.delete(parseUrl(
           DELETE_FILE,
@@ -268,17 +275,25 @@ class Request {
 
   // 创建或者更新
   update(path: string, content: string | object, message?: Omit<Message, 'content'>) {
-    return this.exists(path).then((response) => {
+    const suffixPath = replenishPath(path);
+    return this.exists(replenishPath(suffixPath)).then((response) => {
       if (response.is404) {
-        return Promise.reject(createError`don't have file. path: ${path}`)
+        return Promise.reject(createError`Don't have file. path: ${suffixPath}`)
       }
       return Promise.resolve(response.data)
     }).then((response) => {
-      return this.updateOrCreateFile(path, merge({
-        message: `update(API): ${replenishPath(path)}.`,
-        sha: response.sha,
-        content,
-      }, message));
+      return this.getJsonSchema(getJsonSchemaDir(suffixPath)).then((jsonSchema: object) => {
+        const result = this.validate(content, jsonSchema);
+        if (result === true) {
+          // 创建文件
+          return this.updateOrCreateFile(suffixPath, merge({
+            message: `update(API): ${suffixPath}.`,
+            sha: response.sha,
+            content,
+          }, message));
+        }
+        return Promise.reject(result);
+      });
     });
   }
 
@@ -286,28 +301,16 @@ class Request {
   create(dir: string, content: string | object, message?: Omit<Message, 'content'>) {
     const path = cleanPath(`${dir}/${nanoid()}.json`);
     const msg = `create(API): ${replenishPath(path)}.`;
-    return this.exists(path).then((response) => {
-      if (response.is404) {
-        return Promise.resolve(response.data)
+    return this.getJsonSchema(dir).then((jsonSchema: object) => {
+      const result = this.validate(content, jsonSchema);
+      if (result === true) {
+        // 创建文件
+        return this.updateOrCreateFile(path, merge({
+          message: msg,
+          content,
+        }, message));
       }
-      return Promise.reject(createError`already have file. path: ${path}`)
-    }).then(() => {
-      return this.getJsonSchema(dir).then((jsonSchema: object) => {
-        // 校验数据
-        // 暂不支持 $ref
-        if (!isPlainOject(jsonSchema)) {
-          return Promise.reject(createError`json schema error. ${jsonSchema.toString()}. ${dir}`);
-        }
-        const result = this.validate(content, jsonSchema);
-        if (result === true) {
-          // 创建文件
-          return this.updateOrCreateFile(path, merge({
-            message: msg,
-            content,
-          }, message));
-        }
-        return Promise.reject(result);
-      });
+      return Promise.reject(result);
     });
   }
 }
