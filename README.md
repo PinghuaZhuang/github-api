@@ -17,3 +17,5 @@ git checkout --orphan api
   - [ ] 自动判断是否有api分支.
 
 - [ ] cli
+
+- [ ] publish

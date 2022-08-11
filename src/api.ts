@@ -7,6 +7,13 @@
 export const ALL_BRANCHES = `/repos/{owner}/{repo}/branches`
 
 /**
+ * 仓库
+ * @document https://docs.github.com/cn/rest/branches/branches
+ */
+/* ================================================= */
+export const ALL_REPOSITORIES = `/users/{owner}/repos`;
+
+/**
  * 文件
  * @document https://docs.github.com/cn/rest/repos/contents#create-or-update-file-contents
  */

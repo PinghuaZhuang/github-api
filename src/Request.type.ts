@@ -48,3 +48,8 @@ export interface Tv4Error extends Error {
   dataPath: string;
   schemaPath: string;
 }
+
+export interface PageParams {
+  page?: number;
+  per_page?: number;
+}

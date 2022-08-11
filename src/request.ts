@@ -1,12 +1,22 @@
-import axios, { AxiosRequestConfig, AxiosInstance, AxiosResponse } from 'axios';
+import axios, {
+  AxiosRequestConfig,
+  AxiosInstance,
+  AxiosResponse,
+} from 'axios';
 import tv4 from 'tv4';
 import { nanoid } from 'nanoid'
 import merge from 'lodash/merge';
 import { encode } from 'js-base64';
 import stringify from 'json-stringify-safe';
 import globalConfig from './config';
-import { Message, Content, Options, Tv4Error } from './Request.type';
-import { READE_FILEORDIR, DELETE_FILE, CREATE_OR_UPDATE_FILE } from './api';
+import { Message, Content, Options, Tv4Error, PageParams } from './Request.type';
+import {
+  READE_FILEORDIR,
+  DELETE_FILE,
+  CREATE_OR_UPDATE_FILE,
+  ALL_BRANCHES,
+  ALL_REPOSITORIES,
+} from './api';
 
 const { isArray } = Array;
 const toString = [].toString;
@@ -87,6 +97,37 @@ class Request {
     this.owner = options?.owner ?? globalConfig.owner;
     this.repo = options?.repo ?? globalConfig.repo;
     this.axios = options?.axios ?? create(undefined, this.token);
+  }
+
+  // 获取token用户下的所有repo
+  repos(params?: PageParams & {
+    type?: 'owner' | 'all' | 'member';
+    sort?: 'created' | 'updated' | 'pushed' | 'full_name';
+    direction?: 'asc' | 'desc';
+  }) {
+    return this.axios.get(parseUrl(
+      ALL_REPOSITORIES,
+      this,
+    ), {
+      params: merge({
+        per_page: 20,
+      }, params),
+    }).then((response) => response.data);
+  }
+
+  branches(params?: PageParams & {
+    protected?: boolean;
+  }) {
+    return this.axios.get(parseUrl(
+      ALL_BRANCHES,
+      this,
+    ), {
+      params: merge({
+        page: 1,
+        per_page: 20,
+        protected: false,
+      }, params),
+    }).then((response) => response.data);
   }
 
   path(path: string) {
