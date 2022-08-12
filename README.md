@@ -10,12 +10,14 @@ git checkout --orphan api
 
 ## TODO
 
-- [x] create 使用ID作为文件名创建.
+- [x] CRUD
 
-- [ ] preinstall
-  - [ ] 自动获取token, 以及项目信息.
-  - [ ] 自动判断是否有api分支.
-
+- [ ] postinstall
+  - [ ] 自动判断是否有api分支. 没有则创建 ??
+  
 - [ ] cli
+  - [ ] 利用 github api 创建分支
 
-- [ ] publish
+  - [x] 自动获取项目信息(repo, owner)
+
+- [ ] 发布

@@ -41,17 +41,10 @@ export default async function initialize(str, options) {
   const pkg = getPkg(cwd);
   const { owner, repo } = await parseRepository(pkg);
 
-  $`echo ${owner} ${repo}
-  const config = {
-    token: ${JSON.stringify(process.env.GITHUB_TOKEN)},
-    owner: ${JSON.stringify(owner ?? process.env.GITHUB_OWNER)},
-    repo: ${JSON.stringify(repo ?? process.env.GITHUB_REPO)},
-  }`
-
   // 设置到 config js中
   fs.writeFileSync(
     path.resolve(repoDir, `./src/config.ts`),
-`const config = {
+    `const config = {
   token: ${JSON.stringify(process.env.GITHUB_TOKEN)},
   owner: ${JSON.stringify(owner ?? process.env.GITHUB_OWNER)},
   repo: ${JSON.stringify(repo ?? process.env.GITHUB_REPO)},
